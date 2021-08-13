@@ -15,6 +15,83 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.fernet import Fernet, InvalidToken
 
+class Salt:
+    
+    def __init__(self, size = 16):
+        self.val = os.urandom(size)
+
+    @classmethod
+    def from_string(cls, string_repr):
+        salt = cls()
+        # print(string_repr)
+        salt.val = b64decode(str(string_repr).encode())
+        return salt
+
+    def __str__(self):
+        return b64encode(self.val).decode()
+
+
+
+    def to_string(self):
+        return b64encode(self.val).decode()
+
+    def to_bytes(self):
+        return self.val
+
+
+class crypto:
+
+
+    def __init__(self, pass_phrase, data):
+        self.data = str(data)
+        self.pass_phrase = pass_phrase
+        self.salt = Salt()
+        self.encrypt_status = False
+
+    def create_key(self):
+        
+        # Taken from the website itse
+        # https://cryptography.io/en/latest/fernet/#using-passwords-with-fernet
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=self.config['salt'],
+            iterations=10000
+        )
+
+        key = base64.urlsafe_b64encode(kdf.derive(self.pass_phrase.encode()))
+
+        return key    
+
+        
+        """Encrypts the data given
+        """
+    def encrypt(self, key, text):
+        f = Fernet(key)
+
+        encrypted = f.encrypt(text.encode()).decode()
+
+        """Decrypts the data given
+        """
+    def decrypt(self, key, text):
+        f = Fernet(key)
+
+        return f.decrypt(text.encode())
+
+
+    def __str__(self):
+        return json.dumps(self.to_dict())
+
+
+    def to_dict(self):
+        return {
+            'salt':self.salt.to_string(),
+            'data':self.processed_data
+        }
+  
+    def create_key(self):
+
+
 
 class configuration:
     config = {}
