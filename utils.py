@@ -15,185 +15,23 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.fernet import Fernet, InvalidToken
 
-class Salt:
-    
-    def __init__(self, size = 16):
-        self.val = os.urandom(size)
-
-    @classmethod
-    def from_string(cls, string_repr):
-        salt = cls()
-        # print(string_repr)
-        salt.val = b64decode(str(string_repr).encode())
-        return salt
-
-    def __str__(self):
-        return b64encode(self.val).decode()
-
-
-
-    def to_string(self):
-        return b64encode(self.val).decode()
-
-    def to_bytes(self):
-        return self.val
-
-
-class crypto:
-
-
-    def __init__(self, pass_phrase, data):
-        self.data = str(data)
-        self.pass_phrase = pass_phrase
-        self.salt = Salt()
-        self.encrypt_status = False
-
-    def create_key(self):
-        
-        # Taken from the website itse
-        # https://cryptography.io/en/latest/fernet/#using-passwords-with-fernet
-        kdf = PBKDF2HMAC(
-            algorithm=hashes.SHA256(),
-            length=32,
-            salt=self.config['salt'],
-            iterations=10000
-        )
-
-        key = base64.urlsafe_b64encode(kdf.derive(self.pass_phrase.encode()))
-
-        return key    
-
-        
-        """Encrypts the data given
-        """
-    def encrypt(self, key, text):
-        f = Fernet(key)
-
-        encrypted = f.encrypt(text.encode()).decode()
-
-        """Decrypts the data given
-        """
-    def decrypt(self, key, text):
-        f = Fernet(key)
-
-        return f.decrypt(text.encode())
-
-
-    def __str__(self):
-        return json.dumps(self.to_dict())
-
-
-    def to_dict(self):
-        return {
-            'salt':self.salt.to_string(),
-            'data':self.processed_data
-        }
-  
-    def create_key(self):
-
-
-
-class configuration:
-    config = {}
-    session_master_password=""
-    storage_path = ""
-
-
-    def __init__(self, storage_path, session_master_password):
-        self.storage_path = storage_path
-        self.session_master_password = session_master_password
-
-        self.read_config()
-
-
-
-    # TODO
-    # def session_reset(self):
-    #     # Spawns a thread which resets the session_master_password and all the unencrypted data gets thrown away
-    #     # 
-    #     def deleter(config_ref):
-    #         config_ref.
-    #     self.__watcher = threading.Thread(target=deleter,args=(self,))
-    #     self.__watcher.start() 
-
-    def read_config(self):
-        file_path = os.path.join(self.storage_path, "data.json")
-        try:
-            # Try Opening the configuration file and read the configuration
-            with open(file_path, "r") as file:
-
-                # Read using JSON format
-                self.config = json.loads(file.read())
-        except:
-            # Start from scratch
-            self.config = {'secret':{}}
-
-
-        ## Check if salt exists
-        if "salt" in self.config:
-            self.config['salt'] = b64decode(self.config['salt'])
-        else:
-            # Create a new salt for the data encryption
-            self.config['salt'] = os.urandom(16)
-
-        # If we have created a new salt, write it to config file or started from scratch
-        self.write_config()
-
-
-
-    def write_config(self):
-
-        file_path = os.path.join(self.storage_path, "data.json")
-
-        # Create a copy, so any change in encoding for writing the data doesn't affect the running program functionality
-        copy_config=self.config.copy()
-
-        with open(file_path, "w", encoding='utf-8') as file:
-            
-            # Make the salt file write friendly
-            copy_config['salt'] = b64encode(self.config['salt']).decode()
-            
-            # Write using JSON format
-            file.write(json.dumps(copy_config))
-
-
-    def create_key(self):
-        pass_phrase=self.session_master_password
-        # Taken from the website itse
-        # https://cryptography.io/en/latest/fernet/#using-passwords-with-fernet
-        kdf = PBKDF2HMAC(
-            algorithm=hashes.SHA256(),
-            length=32,
-            salt=self.config['salt'],
-            iterations=10000
-        )
-
-        self.__key = base64.urlsafe_b64encode(kdf.derive(pass_phrase.encode()))
-
-        return self.__key
-
-        """Encrypts the data given
-        """
-    def encrypt_text(self, key, text):
-        f = Fernet(key)
-
-        return f.encrypt(text.encode()).decode()
-
-        """Decrypts the data given
-        """
-    def decrypt_text(self, key, text):
-        f = Fernet(key)
-
-        return f.decrypt(text.encode())
-
-
 def toggle_input(prompt_text=">", initially_hidden=True):
+    """Input Prompt which has a toggle to show input characters or not
+
+    Args:
+        prompt_text (str, optional): Text to be shown for the prompt. Defaults to ">".
+        initially_hidden (bool, optional): Initial state of visibility for the input. Defaults to True.
+
+    Returns:
+        str: Input text from the prompt
+    """
+
     hidden = [initially_hidden]  
     bindings = KeyBindings()
 
     @bindings.add("c-t")
     def _(event):
-        "When ControlT has been pressed, toggle visibility."
+        "When Ctrl-T has been pressed, toggle visibility."
         hidden[0] = not hidden[0]
 
     input_text = prompt(
@@ -203,7 +41,15 @@ def toggle_input(prompt_text=">", initially_hidden=True):
 
 
 def get_path_prompt(prompt_text, **kwargs):
-    
+    """Prompt for taking OS Path as input
+
+    Args:
+        prompt_text (str): Display text when taking input
+        **kwargs : extra arguments to be sent to `prompt` function
+
+    Returns:
+        str: input path from the prompt
+    """
     validator = Validator.from_callable(
         os.path.isdir,
         error_message="Not a valid path to a directory",
